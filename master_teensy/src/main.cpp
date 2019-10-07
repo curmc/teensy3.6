@@ -1,21 +1,27 @@
 #include <Wire.h>
 
+#define LED 12
+
+
+
 void setup() {
-  Wire.begin();
-  Serial.begin(9600);
+  pinMode(LED, OUTPUT);
+  Wire.setSDA(18);
+  Wire.setSCL(19);
+  Wire.begin();        // join i2c bus (address optional for master)
+
+
+  Serial.begin(9600);  // start serial for output
+  digitalWrite(LED, LOW);
 }
 
 void loop() {
-  Wire.beginTransmission(80);
-  Wire.write(0);
+  digitalWrite(LED, HIGH);
+  Wire.beginTransmission(8);
   Wire.write(0);
   Wire.endTransmission();
+  digitalWrite(LED, LOW);
 
-  Wire.requestFrom(80, 1);
-  while(Wire.read()) {
-    
-  }
 
-  Serial.write("hell\n");
-  delay(1000);
+  delay(500);
 }
