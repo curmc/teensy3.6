@@ -16,7 +16,7 @@
 #include <resolv.h>
 #include <unistd.h>
 
-#define SERVER_ADDR "192.168.1.2"
+#define SERVER_ADDR "192.168.0.2"
 #define BUFFER_SIZE 1024
 #define PORT        80
 
@@ -50,6 +50,13 @@ int main() {
   if(connect(sockfd, (struct sockaddr*)&dest, sizeof(dest)) != 0) {
     perror("Connect ");
     exit(errno);
+  }
+
+  buffer[3] = '\0';
+  for(int i = 0; i < 2000; ++i) {
+    write(sockfd, "hiaksjdklsjdfbksjdfkjsadbfkjasdbfkjsabdfkjasbdfkjsbdfkjjbsdfkjbsdafkjbsadkfjbsdkjfbsadkjjfbaskjdfskjdf", 3);
+    read(sockfd, buffer, 3);
+    printf("%s\n", buffer);
   }
 
   close(sockfd);
