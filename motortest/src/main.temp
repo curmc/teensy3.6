@@ -1,0 +1,17 @@
+#include "Arduino.h"
+
+void setup() {
+  pinMode(0, INPUT);
+  pinMode(1, INPUT);
+  pinMode(23, OUTPUT);
+  digitalWrite(23, LOW);
+
+}
+
+void loop() {
+  if(digitalRead(0))
+    digitalWrite(23, HIGH);
+  if(digitalRead(1))
+    digitalWrite(23, LOW);
+}
+

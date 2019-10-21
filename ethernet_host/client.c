@@ -33,7 +33,7 @@ int main() {
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
-  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "enp0s20f0u2");
+  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "enp0s20f0u1");
   if(setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (void*)&ifr, sizeof(ifr)) < 0) {
     perror("Interface");
     exit(errno);
@@ -54,7 +54,7 @@ int main() {
 
   buffer[3] = '\0';
   for(int i = 0; i < 2000; ++i) {
-    write(sockfd, "hiaksjdklsjdfbksjdfkjsadbfkjasdbfkjsabdfkjasbdfkjsbdfkjjbsdfkjbsdafkjbsadkfjbsdkjfbsadkjjfbaskjdfskjdf", 3);
+    write(sockfd, "hhh", 3);
     read(sockfd, buffer, 3);
     printf("%s\n", buffer);
   }
