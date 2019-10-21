@@ -1,0 +1,43 @@
+MOV
+ - cannot access memory (RAM)
+ - cannot move more than 8 bits
+ - cannot mov to higher register (r8 - r13)
+
+  MOV r0, #150
+  MOV r1, r2
+
+LDR
+  - Loads register with 32 bit constant or another register
+
+  LDR r0,=0xFFFF
+  LDR r1,[r2] ; loads r1 with the value pointed to by r2
+  LDR r1, r2  ; loads r1 with the value inside r2
+
+STR
+  - Stores register value into memory (RAM)
+  - Different than others: source, destination not destination, source
+
+  STR r0, [r1] ; stores value of r0 into r1 
+  STR r0, r1   ; stores value of r0 into address of r1
+
+B 
+  - Branch to location
+  B loop ; jumps to loop
+
+BL 
+  - Branch to subroutine
+
+  BL turn_on ; branches to subroutine turn_on - expects turn_on to return:
+
+BX LR
+  - Return from subroutine call
+
+  turn_on:
+    MOV   r2,#0x01
+    BX    LR
+
+NOP
+  - no opperation
+
+
+

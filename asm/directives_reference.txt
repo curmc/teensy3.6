@@ -1,0 +1,28 @@
+Directives:
+
+
+  THUMB - Placed at the top to denote code is generated as thumb ("2nd" version of arm M family)
+
+  CODE - Section of code instructions (read only memory)
+
+  DATA - Section for global variables
+
+  AREA - Instructs assembler to make new code / data sections
+
+  SPACE - Fills w/ zeros
+
+  ALIGN - Next object alligns properly
+
+  EXPORT - Make object accessible from external project
+
+  GLOBAL - Same as export
+
+  IMPORT - Access an exported object 
+
+  END - End of each file
+
+  DCB/W/D - Places byte sized constant in memory (B - 8, W - 16, D - 32)
+
+  EQU - Gives symbolic name to numeric constant
+
+  .text - Makes assembly code callable by C
