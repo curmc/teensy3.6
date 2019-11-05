@@ -1,0 +1,3 @@
+[submodule "teensy_ethernet_client/include/sentinet_message_pkg"]
+	path = teensy_ethernet_client/include/sentinet_message_pkg
+	url = git@github.com:curmc/sentinet_message_pkg
