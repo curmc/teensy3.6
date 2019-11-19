@@ -29,6 +29,8 @@ void setup() {
 
   rmt = (rmt_message){0};
   memset(buffer, 0, 10);
+  pinMode(33, OUTPUT);
+  digitalWrite(33, HIGH);
 }
 
 
@@ -38,6 +40,7 @@ void loop() {
   while(client.connected()) {
     if(client.available()) {
       client.read(buffer, 4);
+      client.write("Erp", 4);
       if(rmt_from_wire(&rmt, buffer)) {
         rmt.lin++;
         rmt.ang++;
