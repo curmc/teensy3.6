@@ -30,3 +30,4 @@ Don't forget:
 
   -10k resistor
   
+![Configuration of test](https://github.com/curmc/teensy3.6/blob/master/testing/teensy_i2c_master_slave_comm/configuration.png)
