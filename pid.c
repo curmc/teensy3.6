@@ -32,8 +32,8 @@ double Kd;
 
 double total_error, last_error;
 
-int max_control;
-int min_control;
+float max_control;
+float min_control;
 
 
 void PID_Control();
@@ -42,8 +42,6 @@ void UpdateSensor();
 int main() {
   FILE* fp = fopen("./data.dat", "w");
 
-
-
   srand(time(NULL));
 
   T = 5000; // microseconds
@@ -51,7 +49,7 @@ int main() {
   gettimeofday(&last_time, NULL);
   
   // Desired is 100
-  setpoint = 100;
+  setpoint = 10;
   // Current read is 0
   sensed_output = 0;
 
@@ -62,25 +60,22 @@ int main() {
 
   total_error = 0;
   last_error = 0;
-  Kp = 0.1;
-  Ki = 0.0001;
-  Kd = 0.0001;
-
+  Kp = 100;
+  Ki = 0;
+  Kd = 50;
 
   printf("Starting Sensed Output: %f Desired Position: %f\n", sensed_output, setpoint);
 
-  for(int i = 0; i < 100; ++i) {
-    if(i == 40)
-      setpoint = 20;
-    if(i == 80)
-      setpoint = -50;
+  for(int i = 0; i < 1000; ++i) {
+    if(i == 400)
+      setpoint = 100;
     // Execute a PID Control Cycle
     PID_Control();
     UpdateSensor();
     printf("%f\n", sensed_output);
 
     // Sleep 6 milliseconds
-    usleep(6000);
+    usleep(5000);
     fprintf(fp, "%d %f\n", i, sensed_output);
   }
 
@@ -97,10 +92,7 @@ double randf(double low, double high){
 
 
 void UpdateSensor() {
-  printf("contr: %f\n", control_signal);
-  double incr = control_signal * randf(0.7, 1.3);
-  printf("incr: %f\n", incr);
-  sensed_output += (control_signal * randf(0.7, 1.3));
+  sensed_output += control_signal;
 }
 
 void PID_Control() {

@@ -1,118 +1,112 @@
-#ifndef ROBOT_H
-#define ROBOT_H
+#include <Arduino.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SparkFunLSM9DS1.h>
+#include "PID.h"
 
-#include "Arduino.h"
+// Scalar value to multiply given speed
+#define PWM_SCALAR      5.12
+// Zero value for pwm
+#define PWM_ZERO        1535
+// Resolution bits
+#define PWM_RES         12
+// Initial frequency
+#define PWM_INIT        250
 
-/**
- * I know this is lazy, but I'm lazy, also c++ is for dweeps, so 
- * we want to keep memory allocation concentrated to compile time
- * macros are the best way to store data without memory allocation
- * this lets that smart ass compiler do its shit better
+// Min throttle is just -MaxThrottle
+#define MAX_THROTTLE    100
+
+
+#define LF_PIN          16
+#define LB_PIN          5
+#define RF_PIN          4
+#define RB_PIN          7
+
+#define MSG_SIZE        11
+
+#define MSG_STATUS_PIN  33
+
+
+/*
+ * A robot handles motor writing and serial
+ * listening
  */
-// PWM Constants
-#define PWM_SCALAR    5.12
-#define PWM_ZERO      1535
-#define PWM_RES       12
-#define PWM_INIT      250
+class Robot {
+  public:
 
-// Throttle and Robot Constants
-#define MAX_THROTTLE  100
-#define BAUD          9600
-#define NUM_MOTORS    6
+    // Default Constructor
+    Robot();
 
-// Pins and indexes
-#define MAIN_INDEX      0
+    // Default Destructor
+    ~Robot();
+
+    // Run once in setup()
+    int robot_setup();
+
+    // Run once in loop()
+    int robot_loop();
+    
 
 
-#define MAIN          10
+    /*
+     * Utility 
+     */
+  protected:
+    // Converts a "pseudo throttle" to a motor value
+    static int convert(int8_t throttle_);
 
-// Signals
-#define DRIVE         'd'
-#define STOP          's'
+    // Listen to the serial channel and update linear and angular values
+    int serial_listen();
 
-/**
- * @brief Initialize motors
- * @note this is the most "changeable" thing - i.e. essentially this
- * is hard coded
- *
- * @param motors a motor array pointer
- */
-void configure_motors(int motors[NUM_MOTORS]) {
-  motors[MAIN_INDEX] = MAIN;
-}
+    // Update motor throttles
+    int callback_velocity();
 
-/**
- * @brief Convert a int8_t to a pwm likeable number //TODO change to macro
- *
- * @param throttle the dummed down throttle
- *
- * @return The nice PWM throttle
- */
-int convert(const int8_t& throttle_) {
-  int throttle;
-  if(throttle_ < -MAX_THROTTLE)
-    throttle = -MAX_THROTTLE;
-  else if(throttle_ > MAX_THROTTLE)
-    throttle = MAX_THROTTLE;
-  else
-    throttle = throttle_;
-  return PWM_ZERO + (throttle * PWM_SCALAR);
-}
+    // Write to motors (this is where analogWrite is called)
+    int motor_write();
 
-/**
- * @brief Listens to the serial port and does stuff
- *
- * @param message A reference to a message so we are not allocating a ton of data
- * @param lin A reference to a linear val so we are not allocating a ton of data
- * @param ang A reference to a ....
- */
-int success; // No allocations
-void serial_listen(char message[5], int8_t& lin, int8_t& ang, int8_t& gun1, int8_t& gun2) {
-  if(Serial1.available()) {
-    success = Serial1.readBytes(message, 5) == 5;
+    // Update sensed position from sensors
+    int sensor_update();
 
-    // here's our message format
-    if(success && message[0] == DRIVE){
-      
-      success = 1;
-      lin = (message[1] == -1 ? (success = 0) : 2 * message[1]);
-      ang = (message[2] == -1 ? (success = 0) : 2 * message[2]); //Temporary
-      gun1 = (message[3] == -1 ? (success = 0) : 2 * message[3]);
-      gun2 = (message[4] == -1 ? (success = 0) : 2 * message[4]);
 
-    }
+  private:
+    // Motor Pins
+    struct motors_s {
+      int lf;
+      int lb;
+      int rf;
+      int rb;
+    } motors;
 
-    // Stop stops the robot. 
-    else if(message[0] == STOP){
-      lin = 0;
-      ang = 0;
-    } else { // I know it's redundant, but I'm gonna change this later
-      lin = 0;
-      ang = 0;
-    }
-  }
-}
+    // Motor pSeudo throttles
+    struct throttle_s { 
+      int8_t lf;
+      int8_t lb;
+      int8_t rf;
+      int8_t rb;
+    } throttle;
 
-/**
- * @brief What did the chicken say to the dinosaur
- *
- * @param throttle I don't know
- * @param lin I didn't think this far ahead
- * @param ang Please don't get mad
- */
-void callback_velocity(int8_t throttle[NUM_MOTORS], const int8_t& lin, const int8_t& ang, const int8_t& gun1, const int8_t gun2) {
-  throttle[MAIN_INDEX] = lin;
-}
+    // Buffer used to recieve and send serial messages
+    uint8_t buffer[11];
 
-/**
- * @brief Write to dem motors
- *
- * @param motors[NUM_MOTORS] The global motor array
- * @param throttle[NUM_MOTORS] The global throttle array
- */
-void motor_write(const int motors[NUM_MOTORS], const int8_t throttle[NUM_MOTORS]) {
-  for(int i = 0; i < NUM_MOTORS; i++)
-    analogWrite(motors[i], convert(throttle[i]));
-}
+    struct speed_estimator {
+      float previous_sensed_angular;
+      float previous_sensed_speed;
 
-#endif
+      float curr_sensed_speed;
+      float curr_sensed_angular;
+
+      float curr_sensed_accel;
+
+      uint64_t previous_time;
+      uint64_t current_time;
+    } speed;
+
+    // Motor speeds
+    int8_t linear;
+    int8_t angular;
+
+    PIDController angular_pid_c;
+    
+    LSM9DS1 imu;
+    bool recieved;
+};

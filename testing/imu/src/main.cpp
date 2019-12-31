@@ -52,7 +52,6 @@
 *****************************************************************/
 // The SFE_LSM9DS1 library requires both Wire and SPI be
 // included BEFORE including the 9DS1 library.
-#include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <SparkFunLSM9DS1.h>
@@ -93,7 +92,8 @@ void printAttitude(float ax, float ay, float az, float mx, float my, float mz);
 
 void setup()
 {
-  Serial.begin(9600);
+  pinMode(33, OUTPUT);
+  Serial.begin(115200);
 
   Wire.begin();
 
@@ -107,12 +107,9 @@ void setup()
                    "if the board jumpers are.");
     while (1);
   }
-  Serial.print("Done");
-  pinMode(33, OUTPUT);
   digitalWrite(33, HIGH);
-  delay(1000);
+  delay(10000);
   digitalWrite(33, LOW);
-  
 }
 
 void loop()
@@ -190,11 +187,11 @@ void printAccel()
   // If you want to print calculated values, you can use the
   // calcAccel helper function to convert a raw ADC value to
   // g's. Give the function the value that you want to convert.
-  Serial.print(imu.calcAccel(imu.ax), 2);
+  Serial.print(imu.calcAccel(imu.ax) * 9.8, 2);
   Serial.print(", ");
-  Serial.print(imu.calcAccel(imu.ay), 2);
+  Serial.print(imu.calcAccel(imu.ay) * 9.8, 2);
   Serial.print(", ");
-  Serial.print(imu.calcAccel(imu.az), 2);
+  Serial.print(imu.calcAccel(imu.az) * 9.8, 2);
   Serial.println(" g");
 #elif defined PRINT_RAW
   Serial.print(imu.ax);
@@ -255,12 +252,6 @@ void printAttitude(float ax, float ay, float az, float mx, float my, float mz)
   heading *= 180.0 / PI;
   pitch *= 180.0 / PI;
   roll  *= 180.0 / PI;
-
-  if(heading < 0) {
-    digitalWrite(33, HIGH);
-  } else {
-    digitalWrite(33, LOW);
-  }
 
   Serial.print("Pitch, Roll: ");
   Serial.print(pitch, 2);
