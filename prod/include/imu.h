@@ -11,7 +11,7 @@
 #include <SparkFunLSM9DS1.h>
 #include <inttypes.h>
 
-
+// Standard deviations of ax and gz to do some low level filtering
 static struct imu_sensitivity_s {
   float ax = 1000; // TODO measure these
   float gz = 1000;
