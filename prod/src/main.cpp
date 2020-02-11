@@ -1,36 +1,22 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "imu.h"
+#include "robot.h"
 
-
-// All the information 
-// is contained in this 
-// one module
 LSM9DS1 imu;
-uint64_t serial_timer;
-SpeedDiagnostics speed(imu);
-
+Robot robot(&imu, 100L);
 
 void setup() {
-  Serial.begin(9600);
-  serial_timer = millis();
-  speed.setup();
-
+  robot.robot_setup(); 
   Wire.begin();
-
-  if(imu.begin() == false) {
-    while(1) {
-      Serial.print("Error\n\r");
-      delay(1000);
-    }
+  if(imu.begin() == false)
+  {
+    Serial.print("ErrorTeensy");
+    while(1);
   }
   imu.calibrate();
 }
 
-
-
 void loop() {
-  speed.loop();
-  delay(1000);
+  robot.robot_loop();
+  Serial.println("hi");
 }
-

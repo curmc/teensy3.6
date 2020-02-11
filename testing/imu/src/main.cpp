@@ -110,6 +110,7 @@ void setup()
   digitalWrite(33, HIGH);
   delay(10000);
   digitalWrite(33, LOW);
+  imu.calibrate();
 }
 
 void loop()

@@ -1,196 +1,176 @@
 /**
- * @author      : theo (theo.j.lincke@gmail.com)
- * @file        : robot
- * @created     : Thursday Dec 19, 2019 21:11:40 MST
+ * @author                        : theo (theo.j.lincke@gmail.com)
+ * @file                                : robot
+ * @created                 : Thursday Dec 19, 2019 21:11:40 MST
  */
 
 #include "robot.h"
 
-Robot::Robot()
+static teensy_msg outgoing;
+
+
+Robot::Robot(LSM9DS1* imu_, uint32_t timming)
 {
-   motors.lf = LF_PIN;
-   motors.lb = LB_PIN;
-   motors.rf = RF_PIN;
-   motors.rb = RB_PIN;
+        // Set motor pins
+        motors.lf = LF_PIN;
+        motors.lb = LB_PIN;
+        motors.rf = RF_PIN;
+        motors.rb = RB_PIN;
 
-   throttle = (throttle_s){0};
-   linear = 0;
-   angular = 0;  
-   recieved = false;
+        // Set throttle to zero
+        memset(&throttle, 0, sizeof(throttle));
+
+        // Initialize the imu reading for covariance
+        linear = 0.0;
+        angular = 0.0;
+
+        memset(&vel_wire, 0, sizeof(imu_message));
 }
-
 
 Robot::~Robot(){}
 
 int Robot::robot_setup() {
+        // Write zero to all motors
+        analogWriteFrequency(motors.lf, PWM_INIT);
+        analogWrite(motors.lf, PWM_ZERO);
 
-  // Write pwm init frequency and zero to
-  // each motor
-  analogWriteFrequency(motors.lf, PWM_INIT);
-  analogWrite(motors.lf, PWM_ZERO);
+        analogWriteFrequency(motors.lb, PWM_INIT);
+        analogWrite(motors.lb, PWM_ZERO);
 
-  analogWriteFrequency(motors.lb, PWM_INIT);
-  analogWrite(motors.lb, PWM_ZERO);
+        analogWriteFrequency(motors.rf, PWM_INIT);
+        analogWrite(motors.rf, PWM_ZERO);
 
-  analogWriteFrequency(motors.rf, PWM_INIT);
-  analogWrite(motors.rf, PWM_ZERO);
+        analogWriteFrequency(motors.rb, PWM_INIT);
+        analogWrite(motors.rb, PWM_ZERO);
 
-  analogWriteFrequency(motors.rb, PWM_INIT);
-  analogWrite(motors.rb, PWM_ZERO);
+        analogWriteResolution(PWM_RES);
 
-  analogWriteResolution(PWM_RES);
-
-  // Begin Serial communication with master
-  // serial device
-  Serial.begin(9600);
-  // Used for imu data
-  Wire.begin();
-
-  // Set speed to zero
-  speed = (speed_estimator){0};
-
-  // Get the current time
-  speed.current_time = millis();
-  speed.previous_time = millis();
-
-  
-  if(imu.begin() == false) {
-    while(1);
-  }
-
-  angular_pid_c.set_desired_val(0);
-  angular_pid_c.set_val(0);
-
-  imu.calibrate();
-  return 1;
+        // start the timer
+        Serial.begin(9600);
+        return 1;
 }
 
 
 int Robot::robot_loop() {
-  
-  // Update the robot sensed
-  // values from the sensor
-  sensor_update();
 
-  angular_pid_c.PID_Control_Loop();
+        // Then read an update and publish
+        // current imu state to the wire
+        int ret = serial_listen();
 
-  // Status on message
-  int ret = serial_listen();
+        // Set throttles
+        callback_velocity();
 
-  callback_velocity();
-  motor_write();
-
-  return ret;
+        // Write to the motors 
+        // Note that this also updates time_milli
+        motor_write();
+        return ret;
 }
 
-int Robot::convert(int8_t throttle_) {
-  if(throttle_ > MAX_THROTTLE)
-    throttle_ = MAX_THROTTLE;
-  else if(throttle_ < -MAX_THROTTLE)
-    throttle_ = -MAX_THROTTLE;
+int Robot::convert(float throttle_) {
+        if(throttle_ > MAX_THROTTLE)
+                throttle_ = (float)MAX_THROTTLE;
+        else if(throttle_ < -MAX_THROTTLE)
+                throttle_ = (float)-MAX_THROTTLE;
 
-  return PWM_ZERO + (throttle_ * PWM_SCALAR);
-}
-
-int Robot::sensor_update() {
-
-  speed.current_time = millis();
-
-  // Read from gyroscope
-  if(imu.gyroAvailable()){
-    imu.readGyro();
-    // Update sensed angular velocity
-    speed.curr_sensed_angular = imu.calcGyro(imu.gz);
-    angular_pid_c.set_val(speed.curr_sensed_accel);
-  }
-
-  // Read from accelerometer
-  if(imu.accelAvailable()){
-    imu.readAccel();
-    
-    speed.curr_sensed_accel = imu.calcAccel(imu.ax);
-
-    //
-    // // Previous speed
-    // float speed_temp = speed.previous_sensed_speed;
-    // speed.previous_sensed_speed = speed.curr_sensed_speed;
-    //
-    /*
-     * V(t) = Delta(t) * acceleration + V(t - 1)
-     */
-    //
-    // // Returns in g's mult by 9.8
-    // float instant_accel = imu.calcAccel(imu.ax) * 9.8; // m/s^2
-    // speed.curr_sensed_accel = instant_accel;
-    //
-    // float period = (speed.current_time - speed_temp) / 1000.0; // s
-    //
-    // if(abs(imu.calcAccel(imu.ax)) < 0.01)
-    //   speed.curr_sensed_speed = 0;
-    // else
-    //   speed.curr_sensed_speed = instant_accel * period + speed.previous_sensed_speed;
-    //
-    // speed.previous_time = speed.current_time;
-  }
-  return 1;
+        // round the command 
+        return PWM_ZERO + ((int)throttle_ * PWM_SCALAR);
 }
 
 int Robot::serial_listen() {
-  int ret;
-  if((ret = Serial.available())) {
-    recieved = true;
-    Serial.readBytes((char*)buffer, 11);
+        // serial available return
+        int ret;
 
-    // Recieve a value and set our new desired speed
-    int* temp_lin = reinterpret_cast<int*>(&buffer[1]);
-    int* temp_ang = reinterpret_cast<int*>(&buffer[5]);
+        if((ret = Serial.available())) {
 
-    linear = *temp_lin;
-    angular = *temp_ang;
+                // Read cmd_vel input from the wire
+                size_t bytes = Serial.readBytes((char*)vel_wire.buffer, CMD_VEL_BUFFER_SIZE);
+                if(bytes == CMD_VEL_BUFFER_SIZE) {
 
-  } else {
-    linear = 0;
-    angular = 0;
-    recieved = false;
-  }
+                        // Parse cmd_vel 
+                        parse_cmd_vel_message(&vel_wire, vel_wire.buffer);
 
-  angular_pid_c.set_desired_val(angular);
+                        // Update local lin and ang
+                        linear = vel_wire.linear_v;
+                        angular = vel_wire.angular_v;
 
-  float* lin_sensed = reinterpret_cast<float*>(&buffer[0]);
-  float* ang_sensed = reinterpret_cast<float*>(&buffer[4]);
+                        // Update the teensy message
+                        outgoing.msg = imu_wire;
+                        update_teensy_imu(&outgoing);
 
-  *lin_sensed = (float)speed.curr_sensed_accel;
-  *ang_sensed = (float)speed.curr_sensed_angular;
+                        // Write to the wire
+                        bytes = Serial.write(outgoing.buffer, TEENSY_BUFFER_SIZE);
+                        if(bytes == TEENSY_BUFFER_SIZE){
+                                /*
+                                 * Since everything has gone to plan
+                                 * we can now call this a complete period, so
+                                 * we reset the imu reading and
+                                 * get the time period passed in seconds
+                                 */
+                                uint64_t prev_time = time_milli;
+                                imu_wire.dt = double(millis() - prev_time) / 1000.0;
+                                // We don't update time_milli until we write to the motors through
 
-  buffer[8] = '\0';
-  // Serial.write(buffer, 9);
-  Serial.write('l');
-  Serial.print(speed.curr_sensed_accel);
-  Serial.write('k');
-  Serial.write('a');
-  Serial.print(speed.curr_sensed_angular);
-  Serial.write('b');
-  Serial.write('c');
-  Serial.print(angular_pid_c.get_val());
-  Serial.write('d');
-
-  return ret;
+                                // Sets values to zero
+                                reset_imu_reading(&imu_covariance.imu_cov);
+                        }
+                }
+        } 
+        return ret;
 }
 
-int Robot::callback_velocity() {
-  // angular = angular_pid_c.get_val();
 
-  throttle.lf = -(linear + angular);
-  throttle.lb = -(linear + angular);
-  throttle.rf = (linear - angular);
-  throttle.rb = (linear - angular);
-  return 1;
+void Robot::read_imu() {
+        uint64_t start = millis();
+        while(millis() - start < imu_covariance.timing) {
+
+                // Update imu
+                if(imu->gyroAvailable())
+                        imu->readGyro();
+                if(imu->accelAvailable())
+                        imu->readAccel();
+
+                // Linear readings
+                float lin[3] = {imu->calcAccel(imu->ax), imu->calcAccel(imu->ay), imu->calcAccel(imu->az)};
+
+                // Angular readings
+                float ang[3] = {imu->calcGyro(imu->gx), imu->calcGyro(imu->gy), imu->calcGyro(imu->gz)};
+
+                // Covariance update
+                update_reading(&imu_covariance.imu_cov, lin, ang);
+        }
+
+        // Copy the data into imu_wire
+        for(size_t i = 0; i < 3; ++i) {
+                imu_wire.linear_acceleration[i] = imu_covariance.imu_cov.linear[i].mean;
+                imu_wire.angular_velocity[i] = imu_covariance.imu_cov.angular[i].mean;
+        }
+        for(size_t i = 0; i < 9; ++i) {
+                for(size_t j = 0; j < 3; ++j) {
+                        imu_wire.linear_acceleration_covariance[i * 3 + j] = imu_covariance.imu_cov.L_P[i][j].cov;
+                        imu_wire.angular_velocity[i * 3 + j] = imu_covariance.imu_cov.A_P[i][j].cov;
+                }
+        }
+}
+
+// update throttles accordingly, this
+// is where a pd controller would go
+int Robot::callback_velocity() {
+        int l = convert(-(linear + angular));
+        int r = convert(linear - angular); 
+        throttle.lf = l;
+        throttle.lb = l;
+        throttle.rf = r;
+        throttle.rb = r;
+        return 1;
 }
 
 int Robot::motor_write() {
-  analogWrite(motors.rf, convert(throttle.rf));
-  analogWrite(motors.rb, convert(throttle.rb));
-  analogWrite(motors.lf, convert(throttle.lf));
-  analogWrite(motors.lb, convert(throttle.lb));
-  return 1;
+        analogWrite(motors.rf, throttle.rf);
+        analogWrite(motors.rb, throttle.rb);
+        analogWrite(motors.lf, throttle.lf);
+        analogWrite(motors.lb, throttle.lb);
+
+        // update time now because motors ideally have been set
+        time_milli = millis();
+        return 1;
 }
