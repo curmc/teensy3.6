@@ -7,56 +7,22 @@
 #include "teensy_msg.h"
 
 void parse_cmd_vel_message(cmd_vel* msg, const uint8_t buffer[CMD_VEL_BUFFER_SIZE]) {
-  float* handle = (float*)&buffer[0];
-  msg->linear_v = *handle++;
-  msg->angular_v = *handle;
+        uint16_t* checksum = (uint16_t*)buffer;
+        msg->checksum = *checksum++;
+
+        uint8_t* state = (uint8_t *)checksum;
+
+        msg->driving = *state++;
+        msg->mining = *state++;
+        msg->dumping = *state++;
+        
+        float* handle = (float *)state;
+        msg->linear_v = *handle++;
+        msg->angular_v = *handle;
 }
 
-void update_teensy_imu(teensy_msg* msg) {
-  /*
-   * Serialize the id of the message
-   */
-  uint64_t* id = (uint64_t*)&msg->buffer[0];
-  *id++ = msg->msg.id;
-
-  /*
-   * Serialize the time change of the message
-   */
-  double* dt = (double*)id;
-  *dt++ = msg->msg.dt;
-
-  /*
-   * Serialize the actual 
-   * data in the message 
-   * (all floats now)
-   */
-  float* handle = (float*)dt;
-
-  // ACTUAL IMU READINGS
-  for(size_t i = 0; i < 3; ++i)
-    *handle++ = msg->msg.linear_acceleration[i];
-  for(size_t i = 0; i < 3; ++i)
-    *handle++ = msg->msg.angular_velocity[i];
-
-  // COPY COVARIANCE READINGS
-  
-  // Linear
-  // diagonal elements
-  for(size_t i = 0; i < 3; ++i)
-    *handle++ = msg->msg.linear_acceleration_covariance[4 * i]; // i * 3 + i
-  // Off diagnoal elements
-  for(size_t i = 0; i < 2; ++i)
-    *handle++ = msg->msg.linear_acceleration_covariance[4 * i - 1]; // i * 3 + i - 1
-  // Corner element
-  *handle++ = msg->msg.linear_acceleration_covariance[6]; 
-
-  // Angular 
-  // diagonal elements
-  for(size_t i = 0; i < 3; ++i)
-    *handle++ = msg->msg.angular_velocity_covariance[4 * i]; // i * 3 + i
-  // Off diagnoal elements
-  for(size_t i = 0; i < 2; ++i)
-    *handle++ = msg->msg.angular_velocity_covariance[4 * i - 1]; // i * 3 + i - 1
-  // Corner element
-  *handle++ = msg->msg.angular_velocity_covariance[6]; 
+void update_teensy_msg(teensy_msg* msg){ 
+        uint16_t* handle = (uint16_t *)msg->buffer;
+        *handle++ = msg->checksum;
+        *handle++ = msg->status;
 }

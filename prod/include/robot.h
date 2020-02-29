@@ -4,6 +4,9 @@
 #include <SparkFunLSM9DS1.h>
 #include "teensy_msg.h"
 
+#define DEBUG
+
+
 // Scalar value to multiply given speed
 #define PWM_SCALAR              5.12
 // Zero value for pwm
@@ -86,5 +89,7 @@ class Robot {
     float angular;
 
     cmd_vel vel_wire;
+    teensy_msg outgoing;
+    
 
 };
