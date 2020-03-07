@@ -1,4 +1,16 @@
 #include <Arduino.h>
+#include <SPI.h>
+
+int prevSw1 = HIGH;
+int incomingByte = 0;
+String charsIn = "";
+char printout[20];
+ 
+void setup() {
+    Serial.begin(9600);
+}
+
+char buffer[256];
 
 
 #define FROM_HOST_MSG_SIZE (sizeof(float) * 2 + sizeof(uint16_t) + 3)
@@ -18,48 +30,37 @@ typedef struct {
 to_host_msg to_host;
 from_host_msg from_host;
 
-void to_host_serialize(to_host_msg* msg, char buffer[TO_HOST_MSG_SIZE]);
-void from_host_deserialize(from_host_msg* msg, char buffer[FROM_HOST_MSG_SIZE]);
+static int to_host_serialize(to_host_msg* msg, char buffer[TO_HOST_MSG_SIZE]);
+static int from_host_deserialize(from_host_msg* msg, char buffer[FROM_HOST_MSG_SIZE]);
 
 char buffer[256];
 
-void setup() {
-    Serial.begin(9600);
-}
-
 void loop() {
 
-        // if(Serial.available()) {
-        //         int i = 0;
-        //         while(Serial.available()) {
-        //                 buffer[i] = Serial.read();
-        //         }
-        //         Serial.write("Hello", 5);
-        //
-        //         // for(uint32_t i = 0; i < FROM_HOST_MSG_SIZE; ++i) {
-        //         //         buffer[i] = Serial.read();
-        //         // }
-        //         //
-        //         // from_host_deserialize(&from_host, buffer);
-        //         // to_host.status_code = (int)from_host.lin;
-        //         // to_host.checksum = (int)from_host.ang;
-        //         // to_host_serialize(&to_host, buffer);
-        //         // Serial.write(buffer, TO_HOST_MSG_SIZE);
-        // }
-        Serial.write("Hello", 5);
-        delay(1000);
+        if(Serial.available()) {
+                for(int i = 0; i < FROM_HOST_MSG_SIZE; ++i) {
+                        buffer[i] = Serial.read();
+                }
+                from_host_deserialize(&from_host_msg, buffer);
+                to_host.code = (int)from_host.lin;
+                to_host.checksum = (int)from_host.ang;
+                to_host_serialize(&to_host, buffer);
+                serial.writeBytes(buffer, TO_HOST_MSG_SIZE);
+        }
+        delay(100);
 
 }
 
-void to_host_serialize(to_host_msg* msg, char buffer[TO_HOST_MSG_SIZE]) {
+static int to_host_serialize(to_host_msg* msg, char buffer[TO_HOST_MSG_SIZE]) {
         uint16_t* handle = (uint16_t*)buffer;
         *handle++ = msg->checksum;
 
         uint8_t* status = (uint8_t*)handle;
         *status++ = msg->status_code;
 
+        return 1;
 }
-void from_host_deserialize(from_host_msg* msg, char buffer[FROM_HOST_MSG_SIZE]){
+static int from_host_deserialize(from_host_msg* msg, char buffer[FROM_HOST_MSG_SIZE]){
         uint16_t* checksum = (uint16_t*)buffer;
         msg->checksum = *checksum++;
 

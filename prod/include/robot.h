@@ -10,7 +10,7 @@
 // Scalar value to multiply given speed
 #define PWM_SCALAR              5.12
 // Zero value for pwm
-#define PWM_ZERO                1535
+#define PWM_ZERO                1585
 
 // Resolution bits
 #define PWM_RES                 12
@@ -19,7 +19,7 @@
 #define PWM_INIT                250
 
 // Min throttle is just -MaxThrottle
-#define MAX_THROTTLE            100
+#define MAX_THROTTLE            50
 
 
 #define LF_PIN                  16
@@ -40,7 +40,7 @@ class Robot {
   public:
 
     // Default Constructor
-    Robot(LSM9DS1* imu_, uint32_t timing);
+    Robot();
 
     // Default Destructor
     ~Robot();
@@ -84,12 +84,9 @@ class Robot {
       int32_t rb;
     } throttle;
 
-
     float linear;
     float angular;
 
     cmd_vel vel_wire;
     teensy_msg outgoing;
-    
-
 };

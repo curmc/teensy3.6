@@ -23,6 +23,7 @@ typedef struct {
         uint8_t buffer[TEENSY_BUFFER_SIZE];
 } teensy_msg;
 
+
 typedef struct {
         uint16_t checksum;
 
